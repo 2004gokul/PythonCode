@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from transformer.data_transformer import transform_user
 
 def test_transformation():
@@ -19,9 +20,18 @@ def test_transformation():
     }
 
     transformed = transform_user(sample_input)
+
+    # Check names and phones
     assert transformed["name"] == "Alice Johnson"
     assert transformed["country_code"] == "91"
     assert transformed["phone_number"] == "9876543210"
-    assert transformed["is_adult"] == True
-    assert transformed["location"]["city"] == "Bangalore"
-    assert transformed["status_code"] == 1
+
+    # Calculate expected age dynamically for test reliability
+    dob = datetime.strptime(sample_input["dob"], "%Y-%m-%d").date()
+    today = date.today()
+    expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    assert transformed["age"] == expected_age
+
+    # Other asserts
+    assert transformed["is_adult"] is (expected_age >= 18)
+    assert transformed["status"] == "active"

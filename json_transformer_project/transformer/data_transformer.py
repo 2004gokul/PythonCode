@@ -1,40 +1,52 @@
-import datetime
+from datetime import datetime, date
 import re
-from dateutil import parser
 
-def transform_user(user):
+def calculate_age(dob_str):
     try:
-        full_name = f"{user['first_name']} {user['last_name']}"
-        phone_match = re.match(r"\+(\d+)-(\d+)", user['phone'])
+        dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return 0
+    today = date.today()
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-        age = datetime.date.today().year - parser.parse(user['dob']).year
-        is_adult = age >= 18
+def extract_country_code_and_number(phone_str):
+    phone_digits = re.sub(r'\D', '', phone_str)
+    if len(phone_digits) > 10:
+        country_code = phone_digits[:-10]
+    else:
+        country_code = ''
+    phone_number = phone_digits[-10:] if len(phone_digits) >= 10 else ''
+    return country_code, phone_number
 
-        address_parts = user['address'].split(',')
-        city, country = address_parts[-2].strip(), address_parts[-1].strip()
+def normalize_address(address):
+    if not isinstance(address, str):
+        return ''
+    cleaned = address.strip().replace('\n', ', ')
+    return re.sub(r'\s{2,}', ' ', cleaned)
 
-        return {
-            "name": full_name,
-            "email": user["email"],
-            "country_code": phone_match.group(1),
-            "phone_number": phone_match.group(2),
-            "age": age,
-            "is_adult": is_adult,
-            "location": {
-                "full_address": user["address"],
-                "city": city,
-                "country": country
-            },
-            "last_login_ts": int(parser.parse(user["last_login"]).timestamp()),
-            "language_main": user["language"].split('-')[0],
-            "contact_preference": user["preferred_contact"].lower(),
-            "social_links": {
-                "linkedin": user["social"]["linkedin"],
-                "twitter": f"https://twitter.com/{user['social']['twitter'].lstrip('@')}"
-            },
-            "status_code": 1 if user["subscription_status"] == "Active" else 0
-        }
-    except Exception as e:
-        from utils.logger import logger
-        logger.error(f"Transformation error: {e}")
-        return None
+def transform_user(user_data):
+    first = user_data.get('first_name', '').strip()
+    last = user_data.get('last_name', '').strip()
+    name = f"{first} {last}".strip()
+
+    phone = user_data.get("phone", "")
+    country_code, phone_number = extract_country_code_and_number(phone)
+
+    age = calculate_age(user_data.get("dob", "1900-01-01"))
+
+    transformed = {
+        "name": name,
+        "country_code": country_code,
+        "phone_number": phone_number,
+        "age": age,
+        "is_adult": age >= 18,
+        "email": user_data.get("email", "").strip(),
+        "address": normalize_address(user_data.get("address", "")),
+        "status": user_data.get("subscription_status", "").strip().lower(),
+        "last_login": user_data.get("last_login", ""),
+        "preferred_contact": user_data.get("preferred_contact", "").strip().lower(),
+        "language": user_data.get("language", "").strip().lower(),
+        "social": user_data.get("social", {}) if isinstance(user_data.get("social"), dict) else {}
+    }
+
+    return transformed
