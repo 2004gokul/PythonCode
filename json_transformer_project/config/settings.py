@@ -1,0 +1,5 @@
+INPUT_DIR = "input_data/"
+OUTPUT_DIR = "output_data/"
+S3_BUCKET_NAME = "your-bucket-name"
+S3_INPUT_PREFIX = "raw/"
+S3_OUTPUT_PREFIX = "transformed/"
